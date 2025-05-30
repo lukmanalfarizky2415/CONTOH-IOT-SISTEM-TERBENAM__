@@ -1,54 +1,103 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include "DHT.h"
 
-const int sensorPin = 2;    
-const int ledPin = 3;       
-const int buzzerPin = 4;    
+#define MQ2_PIN A0
+#define DHTPIN 7
+#define DHTTYPE DHT11
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);  
+#define TRIG_PIN 8
+#define ECHO_PIN 9
+
+#define LED_PIN 3
+#define BUZZER_PIN 4
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+DHT dht(DHTPIN, DHTTYPE);
+
+const int MQ_THRESHOLD = 400;
+const long DISTANCE_THRESHOLD = 20; // cm, jarak batas deteksi
 
 void setup() {
-  pinMode(sensorPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(ledPin, OUTPUT);
+  pinMode(MQ2_PIN, INPUT);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
 
   Serial.begin(9600);
+  dht.begin();
 
   lcd.init();
   lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("Sensor Gempa:");
+
+  lcd.setCursor(0,0);
+  lcd.print("Smart Sensor");
+  lcd.setCursor(0,1);
+  lcd.print("MQ2 DHT Ultra");
+  delay(2000);
+  lcd.clear();
+}
+
+long readUltrasonicDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000); // timeout 30 ms
+  long distance = duration * 0.034 / 2; // cm
+  if (duration == 0) return -1; // tidak terdeteksi
+  else return distance;
 }
 
 void loop() {
-  int vibration = digitalRead(sensorPin);
+  int mq2_value = analogRead(MQ2_PIN);
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  long distance = readUltrasonicDistance();
 
-  if (vibration == HIGH) {
-    Serial.println("Lari ada Gempa!!!!");
+  bool gasAlarm = (mq2_value > MQ_THRESHOLD);
+  bool objectNear = (distance > 0 && distance < DISTANCE_THRESHOLD);
 
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("GEMPA TERDETEKSI");
-
-    for (int i = 0; i < 10; i++) {
-      digitalWrite(buzzerPin, HIGH);
-      digitalWrite(ledPin, HIGH);
-      delay(100);
-      digitalWrite(buzzerPin, LOW);
-      digitalWrite(ledPin, LOW);
-      delay(100);
-    }
+  if (gasAlarm || objectNear) {
+    digitalWrite(LED_PIN, HIGH);
+    digitalWrite(BUZZER_PIN, HIGH);
   } else {
-    digitalWrite(buzzerPin, LOW);
-    digitalWrite(ledPin, LOW);
-
-    lcd.setCursor(0, 1);
-    lcd.print("                ");
-    lcd.setCursor(0, 1);
-    lcd.print("  Aman          ");
+    digitalWrite(LED_PIN, LOW);
+    digitalWrite(BUZZER_PIN, LOW);
   }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  if (gasAlarm) {
+    lcd.print("Gas Terdeteksi");
+  } else {
+    lcd.print("Gas Aman      ");
+  }
+
+  lcd.setCursor(0, 1);
+  if (objectNear) {
+    lcd.print("Objek dekat ");
+    lcd.print(distance);
+    lcd.print("cm");
+  } else {
+    if (!isnan(temperature) && !isnan(humidity)) {
+      lcd.print("T:");
+      lcd.print(temperature,1);
+      lcd.print("C H:");
+      lcd.print(humidity,0);
+      lcd.print("%");
+    } else {
+      lcd.print("DHT Error    ");
+    }
+  }
+
+  Serial.print("MQ2: "); Serial.print(mq2_value);
+  Serial.print(" Dist: "); Serial.print(distance);
+  Serial.print(" T: "); Serial.print(temperature);
+  Serial.print(" H: "); Serial.println(humidity);
+
+  delay(2000);
 }
-
-
-
