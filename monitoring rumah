@@ -8,10 +8,9 @@ const int rainSensorPin = A0;
 const int ledPin = 3;
 const int buzzerPin = 4;
 
-const int threshold = 500; // Sesuaikan berdasarkan pengujian
-
+const int threshold = 500; 
 Servo myServo;
-LiquidCrystal_I2C lcd(0x27, 12, 2); // LCD I2C 12x2, alamat 0x27 (ubah jika berbeda)
+LiquidCrystal_I2C lcd(0x27, 12, 2); 
 
 void setup() {
   pinMode(sensorPin, INPUT);
