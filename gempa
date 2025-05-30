@@ -1,0 +1,54 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+const int sensorPin = 2;    
+const int ledPin = 3;       
+const int buzzerPin = 4;    
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);  
+
+void setup() {
+  pinMode(sensorPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  Serial.begin(9600);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Sensor Gempa:");
+}
+
+void loop() {
+  int vibration = digitalRead(sensorPin);
+
+  if (vibration == HIGH) {
+    Serial.println("Lari ada Gempa!!!!");
+
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+    lcd.setCursor(0, 1);
+    lcd.print("GEMPA TERDETEKSI");
+
+    for (int i = 0; i < 10; i++) {
+      digitalWrite(buzzerPin, HIGH);
+      digitalWrite(ledPin, HIGH);
+      delay(100);
+      digitalWrite(buzzerPin, LOW);
+      digitalWrite(ledPin, LOW);
+      delay(100);
+    }
+  } else {
+    digitalWrite(buzzerPin, LOW);
+    digitalWrite(ledPin, LOW);
+
+    lcd.setCursor(0, 1);
+    lcd.print("                ");
+    lcd.setCursor(0, 1);
+    lcd.print("  Aman          ");
+  }
+}
+
+
+
