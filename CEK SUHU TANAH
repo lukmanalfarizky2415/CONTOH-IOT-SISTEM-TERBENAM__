@@ -1,40 +1,88 @@
+#include "DHT.h"
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+const int soilMoisturePin = A0; 
+const int ldrPin = A1;  
+const int pumpPin = 4;            
+const int ledPin = 2;      
 
-const int sensorPin = A0;  
-int sensorValue = 0;
+#define DHTPIN  7               
+#define DHTTYPE DHT22           
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 12, 2);
+
+const int threshold = 500;        
 
 void setup() {
+  pinMode(pumpPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(ldrPin, INPUT);
+  dht.begin();
+  Serial.begin(9600);
+
   lcd.init();
   lcd.backlight();
+
+  Serial.println("Sistem Smart Farming Ready");
+  lcd.setCursor(0,0);
   lcd.print("Smart Farming");
+  lcd.setCursor(0,1);
+  lcd.print("System Ready");
   delay(2000);
   lcd.clear();
-  pinMode(sensorPin, INPUT);
 }
 
 void loop() {
-  sensorValue = analogRead(sensorPin);
+  int soilMoistureValue = analogRead(soilMoisturePin);
+  int ldrValue = digitalRead(ldrPin);
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  Serial.print("Soil Moisture Level: ");
+  Serial.println(soilMoistureValue);
+  Serial.print(" | Light Level (digital): ");
+  Serial.println(ldrValue);
+  
+  if (!isnan(temperature) && !isnan(humidity)) {
+    Serial.print("Suhu: "); Serial.print(temperature); Serial.println(" °C");
+    Serial.print("Kelembapan: "); Serial.print(humidity); Serial.println(" %");
+  } else {
+    Serial.println("Gagal membaca data DHT22");
+  }
 
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Soil Moisture:");
+  lcd.print("Moist:");
+  lcd.print(soilMoistureValue);
 
   lcd.setCursor(0, 1);
-  if(sensorValue < 300) {
-    lcd.print("Wet      ");
-  }
-  else if(sensorValue < 700) {
-    lcd.print("Moist    ");
-  }
-  else {
-    lcd.print("Dry      ");
+  if (!isnan(temperature) && !isnan(humidity)) {
+    lcd.print("T:");
+    lcd.print(temperature,1);
+    lcd.print("C H:");
+    lcd.print(humidity,0);
+    lcd.print("%");
+  } else {
+    lcd.print("DHT Error");
   }
 
-  Serial.print("Sensor Value: ");
-  Serial.println(sensorValue);
+  if (ldrValue == HIGH) {
+    digitalWrite(ledPin, HIGH);
+    Serial.println("Cahaya kurang -> LED ON");
+  } else {
+    digitalWrite(ledPin, LOW);
+    Serial.println("Cahaya cukup -> LED OFF");
+  }
 
-  delay(1000);
+  if (soilMoistureValue > threshold) {
+    digitalWrite(pumpPin, HIGH);
+    Serial.println("Pompa ON - Tanah kering");
+  } else {
+    digitalWrite(pumpPin, LOW);
+    Serial.println("Pompa OFF - Tanah lembab");
+  }
+
+  delay(2000);
 }
