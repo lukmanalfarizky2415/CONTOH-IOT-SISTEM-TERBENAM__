@@ -1,51 +1,88 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include "DHT.h"
 
-#define FLAME_SENSOR_PIN 2
+#define MQ2_PIN A0
+#define FLAME_PIN 2
+#define DHTPIN 7
+#define DHTTYPE DHT11
+
 #define LED_PIN 3
 #define BUZZER_PIN 4
 
-LiquidCrystal_I2C lcd(0x27, 16, 2); 
+LiquidCrystal_I2C lcd(0x27, 12, 2);
+DHT dht(DHTPIN, DHTTYPE);
+
+const int MQ_THRESHOLD = 400;
 
 void setup() {
-  pinMode(FLAME_SENSOR_PIN, INPUT);
+  pinMode(MQ2_PIN, INPUT);
+  pinMode(FLAME_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
   Serial.begin(9600);
+  dht.begin();
 
   lcd.init();
   lcd.backlight();
+
   lcd.setCursor(0, 0);
-  lcd.print("Flame Sensor:");
+  lcd.print("Sistem Siaga");
+  lcd.setCursor(0, 1);
+  lcd.print("Gas & Api");
+  delay(2000);
+  lcd.clear();
 }
 
 void loop() {
-  int flameDetected = digitalRead(FLAME_SENSOR_PIN);
+  int mq2_value = analogRead(MQ2_PIN);
+  int flameDetected = digitalRead(FLAME_PIN);
 
-  if (flameDetected == HIGH) {
-    Serial.println("UPIN, IPIN, APIIII");
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
 
-    lcd.setCursor(0, 1);
-    lcd.print("                "); 
-    lcd.setCursor(0, 1);
-    lcd.print("  API TERDETEKSI  ");
+  bool gasAlarm = (mq2_value > MQ_THRESHOLD);
+  bool flameAlarm = (flameDetected == HIGH);
 
-    for (int i = 0; i < 10; i++) {
+  if (gasAlarm || flameAlarm) {
+    digitalWrite(LED_PIN, HIGH);
+    for (int i = 0; i < 5; i++) {
       digitalWrite(BUZZER_PIN, HIGH);
-      digitalWrite(LED_PIN, HIGH);
       delay(100);
       digitalWrite(BUZZER_PIN, LOW);
-      digitalWrite(LED_PIN, LOW);
       delay(100);
     }
   } else {
     digitalWrite(LED_PIN, LOW);
     digitalWrite(BUZZER_PIN, LOW);
-
-    lcd.setCursor(0, 1);
-    lcd.print("                "); 
-    lcd.setCursor(0, 1);
-    lcd.print("  Aman          ");
   }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  if (flameAlarm) {
+    lcd.print("API TERDETEKSI");
+  } else if (gasAlarm) {
+    lcd.print("GAS TERDETEKSI");
+  } else {
+    lcd.print("Sistem Aman");
+  }
+
+  lcd.setCursor(0, 1);
+  if (!isnan(temperature) && !isnan(humidity)) {
+    lcd.print("T:");
+    lcd.print(temperature, 1);
+    lcd.print("C H:");
+    lcd.print(humidity, 0);
+    lcd.print("%");
+  } else {
+    lcd.print("DHT Error  ");
+  }
+
+  Serial.print("MQ2: "); Serial.print(mq2_value);
+  Serial.print(" Flame: "); Serial.print(flameDetected);
+  Serial.print(" T: "); Serial.print(temperature);
+  Serial.print(" H: "); Serial.println(humidity);
+
+  delay(2000);
 }
