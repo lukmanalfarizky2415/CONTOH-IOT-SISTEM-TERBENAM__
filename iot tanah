@@ -1,0 +1,99 @@
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include "DHT.h"
+#include <LiquidCrystal_I2C.h>
+
+// Auth Token dari Blynk
+char auth[] = "YOUR_BLYNK_AUTH_TOKEN";
+
+// WiFi credentials
+char ssid[] = "YOUR_WIFI_SSID";
+char pass[] = "YOUR_WIFI_PASSWORD";
+
+#define DHTPIN  7
+#define DHTTYPE DHT22
+
+const int soilMoisturePin = A0;
+const int ldrPin = D6;           // Gunakan pin digital, misalnya D6
+const int pumpPin = D4;          // Gunakan pin digital
+const int ledPin = D3;
+
+const int threshold = 500;
+
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+BlynkTimer timer;
+
+void setup() {
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+
+  pinMode(pumpPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(ldrPin, INPUT);
+
+  dht.begin();
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0,0);
+  lcd.print("Smart Farming");
+  lcd.setCursor(0,1);
+  lcd.print("System Ready");
+  delay(2000);
+  lcd.clear();
+
+  timer.setInterval(2000L, sendSensor);
+}
+
+void sendSensor() {
+  int soilMoistureValue = analogRead(soilMoisturePin);
+  int ldrValue = digitalRead(ldrPin);
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  Blynk.virtualWrite(V0, soilMoistureValue);
+  Blynk.virtualWrite(V1, temperature);
+  Blynk.virtualWrite(V2, humidity);
+  Blynk.virtualWrite(V3, ldrValue);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Moist:");
+  lcd.print(soilMoistureValue);
+
+  lcd.setCursor(0, 1);
+  if (!isnan(temperature) && !isnan(humidity)) {
+    lcd.print("T:");
+    lcd.print(temperature, 1);
+    lcd.print("C H:");
+    lcd.print(humidity, 0);
+    lcd.print("%");
+  } else {
+    lcd.print("DHT Error");
+  }
+
+  if (ldrValue == HIGH) {
+    digitalWrite(ledPin, HIGH);
+    Serial.println("Cahaya kurang -> LED ON");
+  } else {
+    digitalWrite(ledPin, LOW);
+    Serial.println("Cahaya cukup -> LED OFF");
+  }
+
+  if (soilMoistureValue > threshold) {
+    digitalWrite(pumpPin, HIGH);
+    Blynk.virtualWrite(V4, 1); // Pompa ON
+    Serial.println("Pompa ON - Tanah kering");
+  } else {
+    digitalWrite(pumpPin, LOW);
+    Blynk.virtualWrite(V4, 0); // Pompa OFF
+    Serial.println("Pompa OFF - Tanah lembab");
+  }
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
