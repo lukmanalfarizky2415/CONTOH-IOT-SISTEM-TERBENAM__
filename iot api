@@ -2,7 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
 
-char auth[] = "MASUKKAN_AUTH_TOKEN_BLYNK";
+char auth[] = "weyXonDJCs4sOZshmpBv8zatR2mJKI2d";
 char ssid[] = "NAMA_WIFI_KAMU";
 char pass[] = "PASSWORD_WIFI_KAMU";
 
