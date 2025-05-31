@@ -1,98 +1,62 @@
 #define BLYNK_PRINT Serial
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include "DHT.h"
 
-// WiFi & Blynk Credentials
-char auth[] = "YOUR_BLYNK_AUTH_TOKEN";    // Ganti dengan token dari Blynk
-char ssid[] = "YOUR_WIFI_SSID";           // Ganti dengan nama WiFi Anda
-char pass[] = "YOUR_WIFI_PASSWORD";       // Ganti dengan password WiFi
+char auth[] = "MASUKKAN_AUTH_TOKEN_BLYNK";
+char ssid[] = "NAMA_WIFI_KAMU";
+char pass[] = "PASSWORD_WIFI_KAMU";
 
+#define FLAME_SENSOR_PIN D1
+#define LED_PIN D2
+#define BUZZER_PIN D3
+#define RELAY_PIN D4
 #define MQ2_PIN A0
-#define FLAME_PIN D2
-#define DHTPIN D7
-#define DHTTYPE DHT11
 
-#define LED_GAS D8
-#define LED_FLAME D9
-
-const int MQ_THRESHOLD = 400;
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-DHT dht(DHTPIN, DHTTYPE);
+int gasThreshold = 300;
 
 void setup() {
   Serial.begin(9600);
   Blynk.begin(auth, ssid, pass);
 
-  pinMode(MQ2_PIN, INPUT);
-  pinMode(FLAME_PIN, INPUT);
-  pinMode(LED_GAS, OUTPUT);
-  pinMode(LED_FLAME, OUTPUT);
-
-  dht.begin();
-  lcd.init();
-  lcd.backlight();
-
-  lcd.setCursor(0, 0);
-  lcd.print("Sistem Siaga");
-  lcd.setCursor(0, 1);
-  lcd.print("Kebakaran");
-  delay(2000);
-  lcd.clear();
+  pinMode(FLAME_SENSOR_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
 }
 
 void loop() {
   Blynk.run();
 
-  int mq2_value = analogRead(MQ2_PIN);
-  int flameDetected = digitalRead(FLAME_PIN);
-  float temperature = dht.readTemperature();
-  float humidity = dht.readHumidity();
+  int flameDetected = digitalRead(FLAME_SENSOR_PIN);
+  int gasValue = analogRead(MQ2_PIN);
 
-  bool gasAlarm = (mq2_value > MQ_THRESHOLD);
-  bool flameAlarm = (flameDetected == HIGH);
+  Blynk.virtualWrite(V1, gasValue);
 
-  digitalWrite(LED_GAS, gasAlarm ? HIGH : LOW);
-  digitalWrite(LED_FLAME, flameAlarm ? HIGH : LOW);
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  if (flameAlarm) {
-    lcd.print("API TERDETEKSI");
-  } else if (gasAlarm) {
-    lcd.print("GAS TERDETEKSI");
+  if (flameDetected == HIGH) {
+    digitalWrite(RELAY_PIN, HIGH);
+    Blynk.virtualWrite(V0, "Api Terdeteksi!");
+    Blynk.virtualWrite(V3, "RELAY AKTIF");
   } else {
-    lcd.print("Sistem Aman   ");
+    digitalWrite(RELAY_PIN, LOW);
+    Blynk.virtualWrite(V0, "Tidak Ada Api");
+    Blynk.virtualWrite(V3, "RELAY NONAKTIF");
   }
 
-  lcd.setCursor(0, 1);
-  if (!isnan(temperature) && !isnan(humidity)) {
-    lcd.print("T:");
-    lcd.print(temperature, 1);
-    lcd.print("C H:");
-    lcd.print(humidity, 0);
-    lcd.print("%  ");
+  if (gasValue > gasThreshold) {
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(BUZZER_PIN, HIGH);
+      digitalWrite(LED_PIN, HIGH);
+      delay(100);
+      digitalWrite(BUZZER_PIN, LOW);
+      digitalWrite(LED_PIN, LOW);
+      delay(100);
+    }
+    Blynk.virtualWrite(V2, "Gas Terdeteksi - Bahaya!");
   } else {
-    lcd.print("Sensor Error  ");
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(LED_PIN, LOW);
+    Blynk.virtualWrite(V2, "Gas Normal");
   }
 
-  Serial.print("MQ2: ");
-  Serial.print(mq2_value);
-  Serial.print(" | Flame: ");
-  Serial.print(flameDetected);
-  Serial.print(" | Temp: ");
-  Serial.print(temperature);
-  Serial.print(" | Humidity: ");
-  Serial.println(humidity);
-
-  // Kirim ke Blynk Virtual Pins
-  Blynk.virtualWrite(V0, temperature);
-  Blynk.virtualWrite(V1, humidity);
-  Blynk.virtualWrite(V2, gasAlarm ? "GAS TERDETEKSI" : "AMAN");
-  Blynk.virtualWrite(V3, flameAlarm ? "API TERDETEKSI" : "AMAN");
-
-  delay(2000);
+  delay(500);
 }
