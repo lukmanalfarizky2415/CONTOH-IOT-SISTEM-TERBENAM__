@@ -1,0 +1,52 @@
+#include <DHT.h>
+
+#define FLAME_SENSOR_PIN A0
+#define SOIL_MOISTURE_PIN A1
+#define RAIN_SENSOR_PIN A2
+#define PUMP_RELAY_PIN 8
+#define DHT_PIN 2
+
+#define DHTTYPE DHT22
+
+#define FLAME_THRESHOLD 300
+#define SOIL_MOISTURE_THRESHOLD 400
+#define RAIN_THRESHOLD 300
+
+DHT dht(DHT_PIN, DHTTYPE);
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(PUMP_RELAY_PIN, OUTPUT);
+  digitalWrite(PUMP_RELAY_PIN, LOW);
+  dht.begin();
+}
+
+void loop() {
+  int flameValue = analogRead(FLAME_SENSOR_PIN);
+  int soilMoistureValue = analogRead(SOIL_MOISTURE_PIN);
+  int rainValue = analogRead(RAIN_SENSOR_PIN);
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  Serial.print("Flame sensor: "); Serial.println(flameValue);
+  Serial.print("Soil moisture: "); Serial.println(soilMoistureValue);
+  Serial.print("Rain sensor: "); Serial.println(rainValue);
+  Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" *C");
+  Serial.print("Humidity: "); Serial.print(humidity); Serial.println(" %");
+  Serial.println("-----------------------------");
+
+  if (flameValue < FLAME_THRESHOLD) {
+    Serial.println("Api terdeteksi! Pompa menyala untuk memadamkan.");
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
+  } 
+  else if (soilMoistureValue > SOIL_MOISTURE_THRESHOLD && rainValue > RAIN_THRESHOLD) {
+    Serial.println("Tanah kering dan tidak hujan, pompa nyala.");
+    digitalWrite(PUMP_RELAY_PIN, HIGH);
+  }
+  else {
+    Serial.println("Kondisi normal, pompa mati.");
+    digitalWrite(PUMP_RELAY_PIN, LOW);
+  }
+
+  delay(2000);
+}
