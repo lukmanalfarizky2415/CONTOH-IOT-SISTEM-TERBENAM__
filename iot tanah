@@ -3,14 +3,14 @@
 #include <BlynkSimpleEsp8266.h>
 #include <DHT.h>
 
-char auth[] = "YOUR_BLYNK_AUTH_TOKEN";
-char ssid[] = "YOUR_WIFI_SSID";
-char pass[] = "YOUR_WIFI_PASSWORD";
+char auth[] = "MASUKKAN_AUTH_TOKEN_BLYNK";
+char ssid[] = "NAMA_WIFI_KAMU";
+char pass[] = "PASSWORD_WIFI_KAMU";
 
 #define DHTPIN D2
 #define DHTTYPE DHT22
 #define SOIL_MOISTURE_PIN A0
-#define LDR_PIN D7               // LDR sebagai input digital
+#define LDR_PIN D1
 #define PUMP_PIN D5
 #define LED_PIN D6
 
@@ -21,7 +21,6 @@ void setup() {
   Serial.begin(9600);
   Blynk.begin(auth, ssid, pass);
   dht.begin();
-
   pinMode(PUMP_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(LDR_PIN, INPUT);
@@ -30,19 +29,17 @@ void setup() {
 void loop() {
   Blynk.run();
 
-  float temp = dht.readTemperature();
-  float hum = dht.readHumidity();
-  int soil = analogRead(SOIL_MOISTURE_PIN);
-  int light = digitalRead(LDR_PIN);  // Baca terang/gelap
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  int soilMoistureValue = analogRead(SOIL_MOISTURE_PIN);
+  int ldrValue = digitalRead(LDR_PIN);
 
-  // Kirim ke Blynk
-  Blynk.virtualWrite(V0, temp);
-  Blynk.virtualWrite(V1, hum);
-  Blynk.virtualWrite(V2, soil);
-  Blynk.virtualWrite(V3, light);
+  Blynk.virtualWrite(V0, temperature);
+  Blynk.virtualWrite(V1, humidity);
+  Blynk.virtualWrite(V2, soilMoistureValue);
+  Blynk.virtualWrite(V3, ldrValue);
 
-  // Kontrol Pompa
-  if (soil > soilThreshold) {
+  if (soilMoistureValue > soilThreshold) {
     digitalWrite(PUMP_PIN, HIGH);
     Blynk.virtualWrite(V4, "Pompa ON - Tanah Kering");
   } else {
@@ -50,8 +47,7 @@ void loop() {
     Blynk.virtualWrite(V4, "Pompa OFF - Tanah Lembab");
   }
 
-  // Kontrol LED dari LDR
-  if (light == HIGH) {
+  if (ldrValue == HIGH) {
     digitalWrite(LED_PIN, HIGH);
     Blynk.virtualWrite(V5, "Cahaya Kurang - LED ON");
   } else {
@@ -59,5 +55,5 @@ void loop() {
     Blynk.virtualWrite(V5, "Cahaya Cukup - LED OFF");
   }
 
-  delay(2000);  // Delay antar pembacaan
+  delay(2000);
 }
