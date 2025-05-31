@@ -1,9 +1,13 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 
 #define FLAME_SENSOR_PIN A0
 #define SOIL_MOISTURE_PIN A1
 #define RAIN_SENSOR_PIN A2
 #define PUMP_RELAY_PIN 8
+#define LED_RED_PIN 9
+#define LED_GREEN_PIN 10
 #define DHT_PIN 2
 
 #define DHTTYPE DHT22
@@ -13,12 +17,19 @@
 #define RAIN_THRESHOLD 300
 
 DHT dht(DHT_PIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
   Serial.begin(9600);
   pinMode(PUMP_RELAY_PIN, OUTPUT);
+  pinMode(LED_RED_PIN, OUTPUT);
+  pinMode(LED_GREEN_PIN, OUTPUT);
   digitalWrite(PUMP_RELAY_PIN, LOW);
+  digitalWrite(LED_RED_PIN, LOW);
+  digitalWrite(LED_GREEN_PIN, HIGH);
   dht.begin();
+  lcd.init();
+  lcd.backlight();
 }
 
 void loop() {
@@ -28,25 +39,35 @@ void loop() {
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
 
-  Serial.print("Flame sensor: "); Serial.println(flameValue);
-  Serial.print("Soil moisture: "); Serial.println(soilMoistureValue);
-  Serial.print("Rain sensor: "); Serial.println(rainValue);
-  Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" *C");
-  Serial.print("Humidity: "); Serial.print(humidity); Serial.println(" %");
-  Serial.println("-----------------------------");
+  String pumpStatus;
 
   if (flameValue < FLAME_THRESHOLD) {
-    Serial.println("Api terdeteksi! Pompa menyala untuk memadamkan.");
     digitalWrite(PUMP_RELAY_PIN, HIGH);
-  } 
-  else if (soilMoistureValue > SOIL_MOISTURE_THRESHOLD && rainValue > RAIN_THRESHOLD) {
-    Serial.println("Tanah kering dan tidak hujan, pompa nyala.");
+    digitalWrite(LED_RED_PIN, HIGH);
+    digitalWrite(LED_GREEN_PIN, LOW);
+    pumpStatus = "Pompa: ON (Api)";
+  } else if (soilMoistureValue > SOIL_MOISTURE_THRESHOLD && rainValue > RAIN_THRESHOLD) {
     digitalWrite(PUMP_RELAY_PIN, HIGH);
-  }
-  else {
-    Serial.println("Kondisi normal, pompa mati.");
+    digitalWrite(LED_RED_PIN, HIGH);
+    digitalWrite(LED_GREEN_PIN, LOW);
+    pumpStatus = "Pompa: ON (Kering)";
+  } else {
     digitalWrite(PUMP_RELAY_PIN, LOW);
+    digitalWrite(LED_RED_PIN, LOW);
+    digitalWrite(LED_GREEN_PIN, HIGH);
+    pumpStatus = "Pompa: OFF       ";
   }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("T:");
+  lcd.print(temperature, 1);
+  lcd.print("C H:");
+  lcd.print(humidity, 0);
+  lcd.print("%");
+
+  lcd.setCursor(0, 1);
+  lcd.print(pumpStatus);
 
   delay(2000);
 }
