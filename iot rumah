@@ -1,90 +1,68 @@
 #define BLYNK_PRINT Serial
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
 #include <Servo.h>
 
-// Ganti dengan kredensial WiFi dan Auth Token dari Blynk
-char auth[] = "YOUR_BLYNK_AUTH_TOKEN";
-char ssid[] = "YOUR_WIFI_SSID";
-char pass[] = "YOUR_WIFI_PASSWORD";
+char auth[] = "MASUKKAN_AUTH_TOKEN_BLYNK";
+char ssid[] = "NAMA_WIFI_KAMU";
+char pass[] = "PASSWORD_WIFI_KAMU";
 
-// Pin definisi
-const int sensorPin = D5;      // Vibration
-const int pirPin = D2;         // Motion
-const int rainSensorPin = A0;  // Analog input
-const int ledPin = D1;         // LED
-const int buzzerPin = D0;      // Buzzer
-const int servoPin = D6;       // Servo pin, sesuai pin ESP8266
+const int vibrationPin = D1;
+const int pirPin = D2;
+const int rainSensorPin = A0;
+const int ledPin = D5;
+const int buzzerPin = D6;
+const int servoPin = D7;
 
-const int threshold = 500;     // Ambang hujan
+const int threshold = 500;
+
 Servo myServo;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
   Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
 
-  pinMode(sensorPin, INPUT);
+  pinMode(vibrationPin, INPUT);
   pinMode(pirPin, INPUT);
   pinMode(buzzerPin, OUTPUT);
   pinMode(ledPin, OUTPUT);
 
   myServo.attach(servoPin);
   myServo.write(0);
-
-  lcd.init();
-  lcd.backlight();
-  lcd.clear();
-
-  Blynk.begin(auth, ssid, pass);
 }
 
 void loop() {
   Blynk.run();
 
-  int vibration = digitalRead(sensorPin);
+  int vibration = digitalRead(vibrationPin);
   int motionDetected = digitalRead(pirPin);
   int rainValue = analogRead(rainSensorPin);
 
-  // Vibration
+  Blynk.virtualWrite(V2, rainValue);
+
   if (vibration == HIGH) {
     digitalWrite(buzzerPin, HIGH);
-    lcd.setCursor(0, 0);
-    lcd.print("Gempa: TERDETEKSI");
     Blynk.virtualWrite(V0, "Gempa Terdeteksi!");
   } else {
     digitalWrite(buzzerPin, LOW);
-    lcd.setCursor(0, 0);
-    lcd.print("Gempa: Aman      ");
-    Blynk.virtualWrite(V0, "Aman");
+    Blynk.virtualWrite(V0, "Tidak Ada Gempa");
   }
 
-  // Motion
   if (motionDetected == HIGH) {
     digitalWrite(ledPin, HIGH);
-    lcd.setCursor(0, 1);
-    lcd.print("Gerak: Ada       ");
-    Blynk.virtualWrite(V1, 1);
+    Blynk.virtualWrite(V1, "Gerakan Terdeteksi");
   } else {
     digitalWrite(ledPin, LOW);
-    lcd.setCursor(0, 1);
-    lcd.print("Gerak: Tidak     ");
-    Blynk.virtualWrite(V1, 0);
+    Blynk.virtualWrite(V1, "Tidak Ada Gerakan");
   }
 
-  // Rain sensor
   if (rainValue < threshold) {
-    myServo.write(90);  // Misalnya menutup jendela otomatis
-    Blynk.virtualWrite(V2, "Hujan Terdeteksi");
+    myServo.write(90);
+    Blynk.virtualWrite(V3, "Atap Tertutup (Hujan)");
   } else {
     myServo.write(0);
-    Blynk.virtualWrite(V2, "Tidak Hujan");
+    Blynk.virtualWrite(V3, "Atap Terbuka (Cerah)");
   }
-
-  Serial.print("Vibration: "); Serial.print(vibration);
-  Serial.print(" | Motion: "); Serial.print(motionDetected);
-  Serial.print(" | Rain: "); Serial.println(rainValue);
 
   delay(1000);
 }
