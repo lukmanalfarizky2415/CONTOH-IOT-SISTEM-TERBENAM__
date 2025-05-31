@@ -3,7 +3,7 @@
 #include <BlynkSimpleEsp8266.h>
 #include <Servo.h>
 
-char auth[] = "MASUKKAN_AUTH_TOKEN_BLYNK";
+char auth[] = "nnUDSF1Ab53HRFco5Pq9oImB0YGC2rcU";
 char ssid[] = "NAMA_WIFI_KAMU";
 char pass[] = "PASSWORD_WIFI_KAMU";
 
