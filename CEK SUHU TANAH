@@ -11,7 +11,7 @@ const int ledPin = 2;
 #define DHTTYPE DHT22           
 
 DHT dht(DHTPIN, DHTTYPE);
-LiquidCrystal_I2C lcd(0x27, 12, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 const int threshold = 500;        
 
@@ -25,7 +25,6 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
-  Serial.println("Sistem Smart Farming Ready");
   lcd.setCursor(0,0);
   lcd.print("Smart Farming");
   lcd.setCursor(0,1);
