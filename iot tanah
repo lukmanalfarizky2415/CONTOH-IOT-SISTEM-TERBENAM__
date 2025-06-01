@@ -57,3 +57,8 @@ void loop() {
 
   delay(2000);
 }
+
+
+#define BLYNK_TEMPLATE_ID "TMPL65WDNxjPZ"
+#define BLYNK_TEMPLATE_NAME "ESP8266 WIFI"
+#define BLYNK_AUTH_TOKEN "8RYoxIvOIZeVidM0-AppXdY_c-_BsZFt"
